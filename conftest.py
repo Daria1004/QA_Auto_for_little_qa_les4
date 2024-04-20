@@ -15,11 +15,21 @@ def auth_session():
     token = response.json().get("token")
     assert token is not None, "В ответе не оказалось токена"
 
-    session.headers.update({"Cookie": f"token={token}"})  # извлекаем токен
+    session.headers.update({"Cookie": f"token={token}"})
     return session
 
 
-@pytest.fixture()
+@pytest.fixture(scope='session')
+def booking_for_test(auth_session, booking_data):
+    create_booking = auth_session.post(f"{BASE_URL}/booking", json=booking_data)
+    booking_id = create_booking.json().get("bookingid")
+
+    yield booking_id
+
+    auth_session.delete(f"{BASE_URL}/booking/{booking_id}")
+
+
+@pytest.fixture(scope='session')
 def booking_data():
     return {
         "firstname": faker.first_name(),
@@ -27,31 +37,31 @@ def booking_data():
         "totalprice": faker.random_int(min=100, max=100000),
         "depositpaid": True,
         "bookingdates": {
-            "checkin": "2024-04-10",
-            "checkout": "2019-04-13"
+            "checkin": faker.date(),
+            "checkout": faker.date()
         },
-        "additionalneeds": "Breakfast"
+        "additionalneeds": faker.text()
     }
 
 
-@pytest.fixture
-def create_harry_potter_id(auth_session):
-    booking_user = booking_hp()
-    create_booking = auth_session.post(f"{BASE_URL}/booking", json=booking_user)
-    booking_id = create_booking.json().get("bookingid")  # извлекаем id
-    yield booking_id
-    auth_session.delete(f"{BASE_URL}/booking/{booking_id}")
-
-
-def booking_hp():
+@pytest.fixture(scope='function')
+def update_partial_data():
     return {
-        "firstname": "Harry",
-        "lastname": 'Potter',
-        "totalprice": 100500,
+        "firstname": faker.first_name(),
+        "lastname": faker.last_name()
+    }
+
+
+@pytest.fixture(scope='function')
+def update_full_data():
+    return {
+        "firstname": faker.first_name(),
+        "lastname": faker.last_name(),
+        "totalprice":faker.random_int(min=50, max=500),
         "depositpaid": True,
         "bookingdates": {
-            "checkin": "2024-04-13",
-            "checkout": "2019-04-15"
+            "checkin": faker.date(),
+            "checkout": faker.date()
         },
-        "additionalneeds": "Breakfast in the pool"
+        "additionalneeds": faker.text()
     }
